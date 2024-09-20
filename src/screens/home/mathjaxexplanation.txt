@@ -1,0 +1,18 @@
+document.createElement('script'): This creates a new <script> element in the DOM.
+script.src = '...': The src attribute sets the URL from which MathJax's configuration script will be loaded. The provided URL points to MathJax 2.7.9, with support for TeX, MathML, and AsciiMath.
+script.async = true: This makes the script load asynchronously, meaning it won't block other parts of the page from loading while MathJax's script is being fetched.
+
+
+This line appends the newly created <script> element to the document's <head>. By doing this, the browser will begin fetching and executing the MathJax script.
+
+
+
+script.onload = () => { ... }: This attaches a callback function that will be executed once the script is fully loaded.
+Inside the callback:
+window.MathJax.Hub.Config({...}): This is the configuration function for MathJax. It sets up how MathJax will interpret mathematical expressions in the HTML.
+tex2jax: { inlineMath: [['$', '$'], ['\\(', '\\)']] }: This configuration specifies that inline mathematical expressions will be enclosed either by:
+'$...$' (common in LaTeX),
+or '\\(...\\)' (another LaTeX format for inline math).
+This tells MathJax to look for any inline math within these delimiters and render it accordingly.
+
+This block returns a function that will remove the dynamically added <script> element from the <head> when called. This is often used in frameworks like React during component unmounting to avoid memory leaks or conflicts.

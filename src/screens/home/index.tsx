@@ -21,16 +21,37 @@ export default function Home() {
     const [reset,setReset] = useState(false);
     const [result,setResult] = useState<GeneratedResult>(); //generated result state
     const [dictOfVars,setDictOfVars] = useState({}); //used when assigning values to variable like x=5 ,x=8;
+    const [latexExpression,setLatexExpression] = useState<Array<string>>([]);
+    const [latexPosition,setLatexPosition] = useState({x:10,y:200})
 
     useEffect(() => {
       if(reset){
         resetCanvas();
+        setLatexExpression([]);
+        setResult(undefined);
+        setDictOfVars({});
         setReset(false);
       }
     
      
     }, [reset]);
+    useEffect(() => {
+      if(latexExpression.length >0 && window.MathJax){
+        setTimeout(()=>{
+            window.MathJax.Hub.Queue(["Typeset", window.MathJax.Hub]);
+        },0)
+      }
     
+      return () => {
+        
+      }
+    }, [latexExpression])
+    
+    useEffect(()=>{
+        if(result){
+            renderLatexToCanvas(result.expression,result.answer);
+        }
+    },[result])
     useEffect(()=>{
         //initialize the canvas elements
         const canvas = canvasRef.current;
@@ -44,7 +65,34 @@ export default function Home() {
 
             }
         }
+        const script = document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.9/config/TeX-MML-AM_CHTML.js';
+        script.async = true;
+        document.head.appendChild(script);
+
+        script.onload = () =>{
+            window.MathJax.Hub.Config({
+                tex2jax:{inlineMath: [['$','$'],['\\(','\\)']]}
+            })
+        };
+
+        return ()=>{
+            document.head.removeChild(script);
+        }
     },[])
+
+    const renderLatexToCanvas = (expression:string,answer:string)=>{
+        const latex = `\\(\\LARGE{${expression} = ${answer}}\\)`;
+        setLatexExpression([...latexExpression,latex]);
+
+        const canvas = canvasRef.current;
+        if(canvas){
+            const ctx = canvas.getContext('2d');
+            if(ctx){
+                ctx.clearRect(0,0,canvas.width,canvas.height);
+            }
+        }
+    }
 
     const sendData =async()=>{
         const canvas = canvasRef.current;
@@ -58,7 +106,11 @@ export default function Home() {
                 }
             })
             const resp = await response.data;
-            console.log('Response' + resp);
+            resp.forEach((data:Response) => {
+                if(data.assign === true){
+                    setDictOfVars({...dictOfVars,[data.expr]:data.result})
+                }
+            });
         }
     }
     const resetCanvas = ()=>{
