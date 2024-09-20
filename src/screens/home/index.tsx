@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { SWATCHES } from "@/constants";
 import {ColorSwatch,Group} from '@mantine/core';
 import {Button} from '@/components/ui/button';
+import Draggable from 'react-draggable';
 import axios from 'axios';
 //for backend interface
 interface Response {
@@ -38,7 +39,10 @@ export default function Home() {
     useEffect(() => {
       if(latexExpression.length >0 && window.MathJax){
         setTimeout(()=>{
-            window.MathJax.Hub.Queue(["Typeset", window.MathJax.Hub]);
+            //"Typeset": This is an instruction to MathJax to look for any LaTeX expressions within the page and render them as mathematical notations.
+            //window.MathJax.Hub: This refers to the central MathJax hub responsible for managing MathJax's operations.
+            window.MathJax.Hub.Queue(["Typeset", window.MathJax.Hub]); //This tells MathJax to reprocess (or "typeset") the mathematical expressions on the page.
+
         },0)
       }
     
@@ -72,7 +76,7 @@ export default function Home() {
 
         script.onload = () =>{
             window.MathJax.Hub.Config({
-                tex2jax:{inlineMath: [['$','$'],['\\(','\\)']]}
+                 tex2jax: {inlineMath: [['$', '$'], ['\\(', '\\)']]},
             })
         };
 
@@ -82,7 +86,7 @@ export default function Home() {
     },[])
 
     const renderLatexToCanvas = (expression:string,answer:string)=>{
-        const latex = `\\(\\LARGE{${expression} = ${answer}}\\)`;
+        const latex = `${expression} = ${answer}` //This line dynamically constructs a LaTeX expression using template literals. It wraps the expression and answer in MathJax's delimiters (\\(...\\)).
         setLatexExpression([...latexExpression,latex]);
 
         const canvas = canvasRef.current;
@@ -106,12 +110,42 @@ export default function Home() {
                 }
             })
             const resp = await response.data;
-            resp.forEach((data:Response) => {
+            resp.data.forEach((data:Response) => {
                 if(data.assign === true){
                     setDictOfVars({...dictOfVars,[data.expr]:data.result})
                 }
             });
+            const ctx = canvas.getContext('2d');
+            const imageData = ctx!.getImageData(0,0,canvas.width,canvas.height);
+            let minX = canvas.width,minY=canvas.height,maxX = 0 ,maxY=0;
+
+            for(let y = 0;y<canvas.height;y++){
+                for(let x= 0;x<canvas.width;x++){
+                    if(imageData.data[(y*canvas.width + x)*4+3] > 0){
+                        if(x<minX) minX = x;
+                        if(x>maxX) maxX = x;
+                        if(y<minY) minY = y;
+                        if(y>maxY) maxY = y;
+                    }
+                }
+            }
+            const centerX = (minX + maxX) /2;
+            const centerY = (minY + maxY) /2; 
+
+            setLatexPosition({x:centerX,y:centerY});
+
+            resp.data.forEach((data:Response)=>{
+                setTimeout(()=>{
+                    setResult({
+                        expression:data.expr,
+                        answer:data.result
+                    })
+                },1000);
+            })
         }
+        
+        
+
     }
     const resetCanvas = ()=>{
         const canvas = canvasRef.current;
@@ -172,6 +206,17 @@ export default function Home() {
         </div>
         <canvas ref={canvasRef} id="canvas" className="absolute top-0 left-0 w-full h-full bg-black" onMouseDown={startDrawing} onMouseOut={stopDrawing}
         onMouseUp={stopDrawing} onMouseMove={draw}/>
+        {latexExpression && latexExpression.map((latex,index)=>(
+            <Draggable
+            key={index}
+            defaultPosition={latexPosition}
+            onStop={(e,data)=> setLatexPosition({x:data.x,y:data.y})}
+            >
+                <div className="absolute text-white">
+                       <div className="latex-content">{latex}</div>
+                </div>
+            </Draggable>
+        ))}
         </>
     )
 
